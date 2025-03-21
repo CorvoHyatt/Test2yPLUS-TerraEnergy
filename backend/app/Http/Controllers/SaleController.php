@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Sale;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SaleController extends Controller
 {
@@ -11,8 +12,12 @@ class SaleController extends Controller
     {
         $query = Sale::with('user');
 
-        if ($request->has('start_date') && $request->has('end_date')) {
-            $query->whereBetween('sale_date', [$request->start_date, $request->end_date]);
+        if ($request->has('start_date')) {
+            $query->where('sale_date', '>=', $request->start_date);
+        }
+
+        if ($request->has('end_date')) {
+            $query->where('sale_date', '<=', $request->end_date);
         }
 
         if ($request->has('user_id')) {
@@ -21,49 +26,53 @@ class SaleController extends Controller
 
         $sales = $query->get();
 
+        $totals = [
+            'total_sales' => $sales->sum('total_amount'),
+            'sales_by_client' => $sales->groupBy('client')
+                ->map(fn($group) => $group->sum('total_amount'))
+                ->toArray(),
+            'sales_by_user' => $sales->groupBy('user.name')
+                ->map(fn($group) => [
+                    'user' => $group->first()->user->name,
+                    'total' => $group->sum('total_amount')
+                ])
+                ->values()
+                ->toArray()
+        ];
+
         return response()->json([
             'sales' => $sales,
-            'totals' => [
-                'total_sales' => $sales->sum('total_amount'),
-                'sales_by_client' => $sales->groupBy('client')
-                    ->map(fn($group) => $group->sum('total_amount')),
-                'sales_by_user' => $sales->groupBy('user_id')
-                    ->map(fn($group) => [
-                        'user' => $group->first()->user->name,
-                        'total' => $group->sum('total_amount')
-                    ])
-            ]
+            'totals' => $totals
         ]);
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'client' => 'required|string',
+        $validatedData = $request->validate([
+            'client' => 'required|string|max:255',
             'total_amount' => 'required|numeric|min:0',
             'sale_date' => 'required|date',
             'user_id' => 'required|exists:users,id'
         ]);
 
-        $sale = Sale::create($validated);
-        return response()->json($sale, 201);
-    }
+        $sale = Sale::create($validatedData);
+        $sale->load('user');
 
-    public function show(Sale $sale)
-    {
-        return response()->json($sale->load('user'));
+        return response()->json($sale, 201);
     }
 
     public function update(Request $request, Sale $sale)
     {
-        $validated = $request->validate([
-            'client' => 'string',
-            'total_amount' => 'numeric|min:0',
-            'sale_date' => 'date',
-            'user_id' => 'exists:users,id'
+        $validatedData = $request->validate([
+            'client' => 'sometimes|required|string|max:255',
+            'total_amount' => 'sometimes|required|numeric|min:0',
+            'sale_date' => 'sometimes|required|date',
+            'user_id' => 'sometimes|required|exists:users,id'
         ]);
 
-        $sale->update($validated);
+        $sale->update($validatedData);
+        $sale->load('user');
+
         return response()->json($sale);
     }
 

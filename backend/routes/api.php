@@ -11,12 +11,14 @@ Route::get('test', [TestController::class, 'test']);
 
 // Rutas públicas
 Route::post('login', [AuthController::class, 'login']);
+Route::post('register', [AuthController::class, 'register']);
 
 // Rutas protegidas
 Route::middleware('auth:api')->group(function () {
     // Rutas de autenticación
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('refresh', [AuthController::class, 'refresh']);
+    Route::get('user-profile', [AuthController::class, 'userProfile']);
     
     // Rutas de usuarios
     Route::get('users', [UserController::class, 'index']);

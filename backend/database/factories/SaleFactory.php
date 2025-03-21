@@ -2,17 +2,20 @@
 
 namespace Database\Factories;
 
+use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class SaleFactory extends Factory
 {
-    public function definition(): array
+    protected $model = Sale::class;
+
+    public function definition()
     {
         return [
-            'client' => 'Cliente ' . $this->faker->numberBetween(1, 10),
+            'client' => $this->faker->company(),
             'total_amount' => $this->faker->randomFloat(2, 100, 10000),
-            'sale_date' => $this->faker->dateTimeBetween('-1 year', 'now'),
+            'sale_date' => $this->faker->dateTimeBetween('-6 months', 'now'),
             'user_id' => User::factory()
         ];
     }

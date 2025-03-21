@@ -1,10 +1,51 @@
-import { useState, useEffect } from 'react';
-import { getSales, createSale, updateSale, deleteSale, type Sale } from '../services/salesService';
+import { useState, useEffect } from "react";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Typography,
+} from "@mui/material";
+import { Edit as EditIcon, Delete as DeleteIcon } from "@mui/icons-material";
+import { format } from "date-fns";
+import {
+  getSales,
+  createSale,
+  updateSale,
+  deleteSale,
+  type Sale,
+} from "../services/salesService";
+
+interface SaleFormData {
+  client: string;
+  total_amount: string;
+  sale_date: string;
+  user_id: string;
+}
+
+const initialFormData: SaleFormData = {
+  client: "",
+  total_amount: "",
+  sale_date: format(new Date(), "yyyy-MM-dd"),
+  user_id: "",
+};
 
 export default function SalesManagement() {
   const [sales, setSales] = useState<Sale[]>([]);
-  const [editingSale, setEditingSale] = useState<Partial<Sale> | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [formData, setFormData] = useState<SaleFormData>(initialFormData);
 
   useEffect(() => {
     loadSales();
@@ -15,147 +56,182 @@ export default function SalesManagement() {
       const response = await getSales();
       setSales(response.sales);
     } catch (error) {
-      console.error('Error loading sales:', error);
+      console.error("Error loading sales:", error);
     }
+  };
+
+  const handleOpen = (sale?: Sale) => {
+    if (sale) {
+      setEditingSale(sale);
+      setFormData({
+        client: sale.client,
+        total_amount: sale.total_amount.toString(),
+        sale_date: format(new Date(sale.sale_date), "yyyy-MM-dd"),
+        user_id: sale.user_id.toString(),
+      });
+    } else {
+      setEditingSale(null);
+      setFormData(initialFormData);
+    }
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setEditingSale(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (isCreating && editingSale) {
-        await createSale(editingSale as Omit<Sale, 'id'>);
-      } else if (editingSale?.id) {
-        await updateSale(editingSale.id, editingSale);
+      const saleData = {
+        client: formData.client,
+        total_amount: parseFloat(formData.total_amount),
+        sale_date: formData.sale_date,
+        user_id: parseInt(formData.user_id),
+      };
+
+      if (editingSale) {
+        await updateSale(editingSale.id, saleData);
+      } else {
+        await createSale(saleData);
       }
-      setEditingSale(null);
-      setIsCreating(false);
+
+      handleClose();
       loadSales();
     } catch (error) {
-      console.error('Error saving sale:', error);
+      console.error("Error saving sale:", error);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('¿Está seguro de que desea eliminar esta venta?')) {
+    if (window.confirm("¿Está seguro de que desea eliminar esta venta?")) {
       try {
         await deleteSale(id);
         loadSales();
       } catch (error) {
-        console.error('Error deleting sale:', error);
+        console.error("Error deleting sale:", error);
       }
     }
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Gestión de Ventas</h1>
-      
-      <button
-        onClick={() => {
-          setIsCreating(true);
-          setEditingSale({});
-        }}
-        className="mb-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-      >
-        Nueva Venta
-      </button>
+    <Box sx={{ py: 4 }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+        <Typography variant="h4" component="h1">
+          Gestión de Ventas
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => handleOpen()}
+        >
+          Nueva Venta
+        </Button>
+      </Box>
 
-      {(editingSale !== null || isCreating) && (
-        <form onSubmit={handleSubmit} className="mb-6 p-4 border rounded">
-          <div className="grid grid-cols-1 gap-4">
-            <input
-              type="text"
-              placeholder="Cliente"
-              value={editingSale?.client || ''}
-              onChange={e => setEditingSale(prev => ({ ...prev, client: e.target.value }))}
-              className="border rounded p-2"
-              required
-            />
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Monto Total"
-              value={editingSale?.total_amount || ''}
-              onChange={e => setEditingSale(prev => ({ ...prev, total_amount: parseFloat(e.target.value) }))}
-              className="border rounded p-2"
-              required
-            />
-            <input
-              type="date"
-              value={editingSale?.sale_date || ''}
-              onChange={e => setEditingSale(prev => ({ ...prev, sale_date: e.target.value }))}
-              className="border rounded p-2"
-              required
-            />
-            <input
-              type="number"
-              placeholder="ID de Usuario"
-              value={editingSale?.user_id || ''}
-              onChange={e => setEditingSale(prev => ({ ...prev, user_id: parseInt(e.target.value) }))}
-              className="border rounded p-2"
-              required
-            />
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-              >
-                {isCreating ? 'Crear' : 'Guardar'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingSale(null);
-                  setIsCreating(false);
-                }}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </form>
-      )}
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full table-auto">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="px-4 py-2">ID</th>
-              <th className="px-4 py-2">Cliente</th>
-              <th className="px-4 py-2">Monto Total</th>
-              <th className="px-4 py-2">Fecha</th>
-              <th className="px-4 py-2">Usuario ID</th>
-              <th className="px-4 py-2">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sales.map(sale => (
-              <tr key={sale.id} className="border-b">
-                <td className="px-4 py-2">{sale.id}</td>
-                <td className="px-4 py-2">{sale.client}</td>
-                <td className="px-4 py-2">${sale.total_amount.toFixed(2)}</td>
-                <td className="px-4 py-2">{sale.sale_date}</td>
-                <td className="px-4 py-2">{sale.user_id}</td>
-                <td className="px-4 py-2">
-                  <button
-                    onClick={() => setEditingSale(sale)}
-                    className="mr-2 bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
-                  >
-                    Editar
-                  </button>
-                  <button
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>ID</TableCell>
+              <TableCell>Cliente</TableCell>
+              <TableCell>Monto Total</TableCell>
+              <TableCell>Fecha</TableCell>
+              <TableCell>Usuario</TableCell>
+              <TableCell>Acciones</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {sales.map((sale) => (
+              <TableRow key={sale.id}>
+                <TableCell>{sale.id}</TableCell>
+                <TableCell>{sale.client}</TableCell>
+                <TableCell>${sale.total_amount.toFixed(2)}</TableCell>
+                <TableCell>
+                  {format(new Date(sale.sale_date), "dd/MM/yyyy")}
+                </TableCell>
+                <TableCell>{sale.user?.name || sale.user_id}</TableCell>
+                <TableCell>
+                  <IconButton color="primary" onClick={() => handleOpen(sale)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    color="error"
                     onClick={() => handleDelete(sale.id)}
-                    className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
                   >
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
+                    <DeleteIcon />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {editingSale ? "Editar Venta" : "Nueva Venta"}
+        </DialogTitle>
+        <DialogContent>
+          <Box component="form" onSubmit={handleSubmit} sx={{ pt: 2 }}>
+            <TextField
+              fullWidth
+              label="Cliente"
+              value={formData.client}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, client: e.target.value }))
+              }
+              margin="normal"
+              required
+            />
+            <TextField
+              fullWidth
+              label="Monto Total"
+              type="number"
+              inputProps={{ step: "0.01", min: "0" }}
+              value={formData.total_amount}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  total_amount: e.target.value,
+                }))
+              }
+              margin="normal"
+              required
+            />
+            <TextField
+              fullWidth
+              label="Fecha"
+              type="date"
+              value={formData.sale_date}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, sale_date: e.target.value }))
+              }
+              margin="normal"
+              required
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              fullWidth
+              label="ID de Usuario"
+              type="number"
+              value={formData.user_id}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, user_id: e.target.value }))
+              }
+              margin="normal"
+              required
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Cancelar</Button>
+          <Button onClick={handleSubmit} variant="contained" color="primary">
+            {editingSale ? "Guardar" : "Crear"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
