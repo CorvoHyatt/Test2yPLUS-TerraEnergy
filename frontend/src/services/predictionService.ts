@@ -1,8 +1,8 @@
 import axios from "axios";
 import type { Sale } from "./salesService";
 
-// Usar el nombre del servicio de Docker y el puerto interno
-const ML_API_URL = "http://ml_service:5000";
+// Usar la URL pública del servicio ML (mapeada al puerto 5005)
+const ML_API_URL = "http://localhost:5005";
 
 export interface SalesPrediction {
   date: string;
@@ -38,10 +38,7 @@ export const getPredictions = async (
   params: PredictionParams
 ): Promise<SalesPrediction[]> => {
   try {
-    const response = await axios.post(
-      `${ML_API_URL}/ml/predict`,
-      params
-    );
+    const response = await axios.post(`${ML_API_URL}/ml/predict`, params);
     return response.data;
   } catch (error) {
     console.error("Error getting predictions:", error);

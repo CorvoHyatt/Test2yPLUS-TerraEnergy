@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 import traceback
 
 app = Flask(__name__)
-CORS(app)
+# Configurar CORS para permitir solicitudes desde cualquier origen
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 class SalesPredictor:
     def __init__(self):

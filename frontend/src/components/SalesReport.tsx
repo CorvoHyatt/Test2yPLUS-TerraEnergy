@@ -84,8 +84,10 @@ export default function SalesReport() {
       // Obtener predicciones
       const predictions = await getPredictions({
         predictionPeriod: predictionDays,
-        startDate: filters.start_date,
-        endDate: filters.end_date,
+        startDate:
+          salesData.sales.length > 0
+            ? salesData.sales[salesData.sales.length - 1].sale_date
+            : undefined,
       });
       setPredictions(predictions);
     } catch (error) {
