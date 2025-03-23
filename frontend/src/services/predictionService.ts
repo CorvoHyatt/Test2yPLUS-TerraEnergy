@@ -1,26 +1,33 @@
-import { api } from "./api";
+import axios from "axios";
 import type { Sale } from "./salesService";
 
-const ML_API_URL = "http://localhost:5005";
+// Usar el nombre del servicio de Docker y el puerto interno
+const ML_API_URL = "http://ml_service:5000";
 
 export interface SalesPrediction {
   date: string;
   predicted_amount: number;
+  lower_bound: number;
+  upper_bound: number;
+}
+
+export interface PredictionParams {
+  predictionPeriod: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 export const trainModel = async (sales: Sale[]): Promise<void> => {
   try {
-    const response = await fetch(`${ML_API_URL}/train`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ sales }),
-    });
+    // Asegurar que los datos estén en el formato correcto
+    const formattedSales = sales.map((sale) => ({
+      sale_date: sale.sale_date,
+      total_amount: Number(sale.total_amount),
+    }));
 
-    if (!response.ok) {
-      throw new Error("Error training model");
-    }
+    await axios.post(`${ML_API_URL}/ml/train`, {
+      sales: formattedSales,
+    });
   } catch (error) {
     console.error("Error training model:", error);
     throw error;
@@ -28,17 +35,14 @@ export const trainModel = async (sales: Sale[]): Promise<void> => {
 };
 
 export const getPredictions = async (
-  days: number = 7
+  params: PredictionParams
 ): Promise<SalesPrediction[]> => {
   try {
-    const response = await fetch(`${ML_API_URL}/predict?days=${days}`);
-
-    if (!response.ok) {
-      throw new Error("Error getting predictions");
-    }
-
-    const data = await response.json();
-    return data.predictions;
+    const response = await axios.post(
+      `${ML_API_URL}/ml/predict`,
+      params
+    );
+    return response.data;
   } catch (error) {
     console.error("Error getting predictions:", error);
     throw error;

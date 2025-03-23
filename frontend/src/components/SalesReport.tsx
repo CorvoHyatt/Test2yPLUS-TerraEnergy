@@ -38,8 +38,22 @@ export default function SalesReport() {
     end_date: "",
     user_id: "",
   });
+  const [predictionConfig, setPredictionConfig] = useState({
+    predictionPeriod: 7,
+    periodType: "days",
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Opciones predefinidas para períodos de predicción
+  const predefinedPeriods = [
+    { label: "7 días", value: 7, type: "days" },
+    { label: "15 días", value: 15, type: "days" },
+    { label: "1 mes", value: 1, type: "months" },
+    { label: "3 meses", value: 3, type: "months" },
+    { label: "6 meses", value: 6, type: "months" },
+    { label: "1 año", value: 1, type: "year" },
+  ];
 
   useEffect(() => {
     loadSales();
@@ -49,20 +63,40 @@ export default function SalesReport() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getSales({
+      const salesData = await getSales({
         start_date: filters.start_date || undefined,
         end_date: filters.end_date || undefined,
         user_id: filters.user_id ? parseInt(filters.user_id) : undefined,
       });
-      setSalesData(data);
+      setSalesData(salesData);
 
-      // Entrenar el modelo con los datos actuales
-      await trainModel(data.sales);
-      const predictions = await getPredictions(7);
+      // Entrenar el modelo con los datos de ventas
+      await trainModel(salesData.sales);
+
+      // Calcular el período de predicción en días
+      let predictionDays = predictionConfig.predictionPeriod;
+      if (predictionConfig.periodType === "months") {
+        predictionDays = predictionConfig.predictionPeriod * 30;
+      } else if (predictionConfig.periodType === "year") {
+        predictionDays = predictionConfig.predictionPeriod * 365;
+      }
+
+      // Obtener predicciones
+      const predictions = await getPredictions({
+        predictionPeriod: predictionDays,
+        startDate: filters.start_date,
+        endDate: filters.end_date,
+      });
       setPredictions(predictions);
     } catch (error) {
       console.error("Error loading sales:", error);
-      setError("Error al cargar los datos. Por favor, inténtelo de nuevo.");
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Error desconocido al cargar los datos"
+      );
+      setSalesData(null);
+      setPredictions([]);
     } finally {
       setLoading(false);
     }
@@ -72,7 +106,27 @@ export default function SalesReport() {
     loadSales();
   };
 
-  // Preparar datos para los gráficos existentes
+  // Preparar datos para el gráfico histórico de ventas
+  const historicalSalesChart = salesData?.sales
+    ? {
+        labels: salesData.sales.map((sale) =>
+          format(new Date(sale.sale_date), "dd/MM/yyyy")
+        ),
+        datasets: [
+          {
+            label: "Ventas Históricas",
+            data: salesData.sales.map((sale) =>
+              parseFloat(sale.total_amount.toString())
+            ),
+            borderColor: "rgb(75, 192, 192)",
+            backgroundColor: "rgba(75, 192, 192, 0.5)",
+            tension: 0.1,
+          },
+        ],
+      }
+    : null;
+
+  // Preparar datos para los gráficos por cliente y usuario
   const salesByClientChart = salesData
     ? {
         labels: Object.keys(salesData.totals.sales_by_client),
@@ -99,19 +153,43 @@ export default function SalesReport() {
       }
     : null;
 
-  // Preparar datos para el gráfico de predicciones
-  const predictionsChart = {
-    labels: predictions.map((p) => format(new Date(p.date), "dd/MM/yyyy")),
-    datasets: [
-      {
-        label: "Predicción de Ventas",
-        data: predictions.map((p) => p.predicted_amount),
-        borderColor: "rgb(255, 99, 132)",
-        backgroundColor: "rgba(255, 99, 132, 0.5)",
-        tension: 0.1,
-      },
-    ],
-  };
+  // Preparar datos para el gráfico de predicciones con intervalos de confianza
+  const predictionsChart =
+    predictions.length > 0
+      ? {
+          labels: predictions.map((p) =>
+            format(new Date(p.date), "dd/MM/yyyy")
+          ),
+          datasets: [
+            {
+              label: "Predicción de Ventas",
+              data: predictions.map((p) => p.predicted_amount),
+              borderColor: "rgb(255, 99, 132)",
+              backgroundColor: "rgba(255, 99, 132, 0.5)",
+              tension: 0.1,
+              fill: false,
+            },
+            {
+              label: "Límite Superior",
+              data: predictions.map((p) => p.upper_bound),
+              borderColor: "rgba(255, 99, 132, 0.2)",
+              backgroundColor: "transparent",
+              borderDash: [5, 5],
+              tension: 0.1,
+              fill: false,
+            },
+            {
+              label: "Límite Inferior",
+              data: predictions.map((p) => p.lower_bound),
+              borderColor: "rgba(255, 99, 132, 0.2)",
+              backgroundColor: "rgba(255, 99, 132, 0.1)",
+              borderDash: [5, 5],
+              tension: 0.1,
+              fill: 1, // Rellena el área entre este dataset y el dataset 1 (Límite Superior)
+            },
+          ],
+        }
+      : null;
 
   return (
     <Container
@@ -162,10 +240,7 @@ export default function SalesReport() {
             >
               <MenuItem value="">Todos los usuarios</MenuItem>
               {salesData?.totals.sales_by_user.map((item) => (
-                <MenuItem
-                  key={item.user}
-                  value={item.user.split(" - ")[0]} // Asumiendo que el ID está en el formato "ID - Nombre"
-                >
+                <MenuItem key={item.user} value={item.user.split(" - ")[0]}>
                   {item.user}
                 </MenuItem>
               ))}
@@ -173,6 +248,39 @@ export default function SalesReport() {
           </FormControl>
           <Button variant="contained" onClick={handleApplyFilters}>
             Aplicar Filtros
+          </Button>
+        </Box>
+
+        <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mb: 4 }}>
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Período de Predicción</InputLabel>
+            <Select
+              value={`${predictionConfig.predictionPeriod}-${predictionConfig.periodType}`}
+              label="Período de Predicción"
+              onChange={(e) => {
+                const [value, type] = e.target.value.split("-");
+                setPredictionConfig({
+                  predictionPeriod: parseInt(value),
+                  periodType: type,
+                });
+              }}
+            >
+              {predefinedPeriods.map((period) => (
+                <MenuItem
+                  key={`${period.value}-${period.type}`}
+                  value={`${period.value}-${period.type}`}
+                >
+                  {period.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button
+            variant="contained"
+            onClick={loadSales}
+            sx={{ height: "56px" }}
+          >
+            Actualizar Predicción
           </Button>
         </Box>
 
@@ -188,6 +296,36 @@ export default function SalesReport() {
           </Box>
         ) : (
           <>
+            {/* Gráfico Histórico de Ventas */}
+            <Paper sx={{ p: 3, mb: 4 }}>
+              <Typography variant="h6" gutterBottom>
+                Histórico de Ventas
+              </Typography>
+              {historicalSalesChart && (
+                <Line
+                  data={historicalSalesChart}
+                  options={{
+                    responsive: true,
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        title: {
+                          display: true,
+                          text: "Monto de Venta",
+                        },
+                      },
+                      x: {
+                        title: {
+                          display: true,
+                          text: "Fecha",
+                        },
+                      },
+                    },
+                  }}
+                />
+              )}
+            </Paper>
+
             <Grid container spacing={4}>
               <Grid item xs={12} md={6}>
                 <Paper sx={{ p: 3 }}>
@@ -210,20 +348,72 @@ export default function SalesReport() {
             {/* Sección de Predicciones */}
             <Paper sx={{ mt: 4, p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                Predicción de Ventas (Próximos 7 días)
+                Predicción de Ventas ({predictionConfig.predictionPeriod}{" "}
+                {predictionConfig.periodType === "days"
+                  ? "días"
+                  : predictionConfig.periodType === "months"
+                  ? "meses"
+                  : "año"}
+                )
               </Typography>
               {predictions.length > 0 ? (
                 <>
                   <Box sx={{ mb: 3 }}>
-                    <Line data={predictionsChart} />
+                    <Line
+                      data={predictionsChart}
+                      options={{
+                        responsive: true,
+                        plugins: {
+                          tooltip: {
+                            callbacks: {
+                              label: function (context: {
+                                dataIndex: number;
+                                dataset: { label: string };
+                                raw: number;
+                              }) {
+                                const prediction =
+                                  predictions[context.dataIndex];
+                                if (
+                                  context.dataset.label ===
+                                  "Predicción de Ventas"
+                                ) {
+                                  return `Predicción: $${prediction.predicted_amount.toFixed(
+                                    2
+                                  )}`;
+                                }
+                                return (
+                                  context.dataset.label + `: $${context.raw}`
+                                );
+                              },
+                            },
+                          },
+                        },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            title: {
+                              display: true,
+                              text: "Monto Predicho",
+                            },
+                          },
+                          x: {
+                            title: {
+                              display: true,
+                              text: "Fecha",
+                            },
+                          },
+                        },
+                      }}
+                    />
                   </Box>
                   <TableContainer>
                     <Table>
                       <TableHead>
                         <TableRow>
                           <TableCell>Fecha</TableCell>
+                          <TableCell align="right">Predicción</TableCell>
                           <TableCell align="right">
-                            Predicción de Venta
+                            Rango de Confianza
                           </TableCell>
                         </TableRow>
                       </TableHead>
@@ -235,6 +425,10 @@ export default function SalesReport() {
                             </TableCell>
                             <TableCell align="right">
                               ${prediction.predicted_amount.toFixed(2)}
+                            </TableCell>
+                            <TableCell align="right">
+                              ${prediction.lower_bound.toFixed(2)} - $
+                              {prediction.upper_bound.toFixed(2)}
                             </TableCell>
                           </TableRow>
                         ))}
