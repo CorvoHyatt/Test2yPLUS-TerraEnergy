@@ -33,7 +33,7 @@ return [
 
     'deprecations' => [
         'channel' => env('LOG_DEPRECATIONS_CHANNEL', 'null'),
-        'trace' => env('LOG_DEPRECATIONS_TRACE', false),
+        'trace' => false,
     ],
 
     /*
@@ -54,7 +54,7 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', env('LOG_STACK', 'single')),
+            'channels' => ['daily'],
             'ignore_exceptions' => false,
         ],
 
@@ -69,8 +69,12 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
-            'replace_placeholders' => true,
+            'days' => 14,
+            'formatter' => \Monolog\Formatter\LineFormatter::class,
+            'formatter_with' => [
+                'format' => "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n",
+                'dateFormat' => 'Y-m-d H:i:s',
+            ],
         ],
 
         'slack' => [

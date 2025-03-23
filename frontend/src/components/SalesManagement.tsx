@@ -147,7 +147,9 @@ export default function SalesManagement() {
               <TableRow key={sale.id}>
                 <TableCell>{sale.id}</TableCell>
                 <TableCell>{sale.client}</TableCell>
-                <TableCell>${sale.total_amount.toFixed(2)}</TableCell>
+                <TableCell>
+                  ${parseFloat(sale.total_amount.toString()).toFixed(2)}
+                </TableCell>
                 <TableCell>
                   {format(new Date(sale.sale_date), "dd/MM/yyyy")}
                 </TableCell>

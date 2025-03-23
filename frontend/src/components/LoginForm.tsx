@@ -15,6 +15,7 @@ export const LoginForm = () => {
       await userService.login(email, password);
       navigate("/users");
     } catch (err) {
+      console.error("Error logging in:", err);
       setError("Credenciales inválidas");
     }
   };

@@ -1,8 +1,8 @@
 import axios from "axios";
 import { User, UserInput } from "../types/user";
 
-const api = axios.create({
-  baseURL: "http://localhost:8000/api",
+export const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -16,9 +16,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Agregar interceptor para manejar errores de autenticación
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const userService = {
   login: async (email: string, password: string) => {
     const response = await api.post("/login", { email, password });
+    console.log("response", response);
     const { token } = response.data.authorization;
     localStorage.setItem("token", token);
     return response.data;

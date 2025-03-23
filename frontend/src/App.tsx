@@ -13,6 +13,7 @@ import { Box, CssBaseline, Container } from "@mui/material";
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem("token");
+  console.log("token", token);
   if (!token) {
     return <Navigate to="/login" />;
   }

@@ -5,13 +5,21 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Sale;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Crear usuarios de prueba
-        User::factory(5)->create();
+        // Crear usuario administrador
+        User::create([
+            'name' => 'Admin',
+            'email' => 'admin@test.com',
+            'password' => Hash::make('password123')
+        ]);
+
+        // Crear usuarios adicionales de prueba
+        User::factory(4)->create();
 
         // Crear ventas de prueba
         $users = User::all();
