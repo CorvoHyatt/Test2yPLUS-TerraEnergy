@@ -13,6 +13,7 @@ El modelo utiliza una Regresión Lineal (LinearRegression de scikit-learn) para 
 ### ¿Por qué estos features?
 
 El modelo asume que las ventas pueden tener patrones temporales como:
+
 - Variaciones según el día de la semana (ej: más ventas en días laborables)
 - Ciclos mensuales (ej: más ventas a principio/fin de mes)
 - Estacionalidad por mes
@@ -28,12 +29,14 @@ El modelo asume que las ventas pueden tener patrones temporales como:
 El servicio se integra con la aplicación principal a través de dos endpoints REST:
 
 ### 1. Endpoint de Entrenamiento (/train)
+
 - Método: POST
 - Recibe: Lista de ventas históricas
 - Acción: Entrena el modelo con los datos proporcionados
 - Uso: Se llama automáticamente cuando se cargan los datos en el reporte de ventas
 
 ### 2. Endpoint de Predicción (/predict)
+
 - Método: GET
 - Parámetros: days (número de días a predecir)
 - Retorna: Lista de predicciones con fecha y monto
@@ -50,11 +53,13 @@ docker-compose up --build
 ## Limitaciones y Mejoras Futuras
 
 1. El modelo actual es relativamente simple y podría mejorarse:
+
    - Incorporando más variables (ej: eventos especiales, promociones)
    - Usando modelos más sofisticados (ARIMA, Prophet, etc.)
    - Añadiendo intervalos de confianza a las predicciones
 
 2. El estado del modelo se pierde al reiniciar el contenedor
+
    - Se podría implementar persistencia del modelo entrenado
 
 3. No hay validación cruzada ni métricas de evaluación

@@ -1,6 +1,6 @@
-FROM php:8.2-fpm
+FROM php:8.2-apache
 
-# Instalar dependencias y Nginx
+# Instalar dependencias
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -8,38 +8,39 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     zip \
-    unzip \
-    nginx
+    unzip
 
-# Limpiar cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Instalar extensiones PHP
+# Instalar extensiones de PHP
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# Obtener Composer
+# Habilitar mod_rewrite para Apache
+RUN a2enmod rewrite
+
+# Configurar el documento root de Apache
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+# Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Establecer directorio de trabajo
 WORKDIR /var/www/html
 
-# Copiar configuración de Nginx
-COPY nginx.conf /etc/nginx/sites-available/default
-
-# Copiar archivos de la aplicación
+# Copiar archivos del proyecto
 COPY . .
 
-# Instalar dependencias
+# Instalar dependencias de PHP
 RUN composer install
 
-# Generar key de la aplicación
-RUN php artisan key:generate
+# Dar permisos necesarios
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html/storage
 
-# Permisos de almacenamiento
-RUN chmod -R 777 storage bootstrap/cache
+# Script de inicio
+COPY start.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/start.sh
 
-# Asegurar que start.sh tenga permisos de ejecución
-RUN chmod +x start.sh
-
+# Puerto por defecto de Apache
 EXPOSE 8000
-CMD ["./start.sh"]
+
+CMD ["/usr/local/bin/start.sh"]

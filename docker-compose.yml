@@ -52,7 +52,7 @@ services:
   ml_service:
     build: ./ml_service
     ports:
-      - "5000:5000"
+      - "5005:5000"
     volumes:
       - ./ml_service:/app
     environment:

@@ -1,7 +1,7 @@
-import { api } from './api';
-import type { Sale } from './salesService';
+import { api } from "./api";
+import type { Sale } from "./salesService";
 
-const ML_API_URL = 'http://localhost:5000';
+const ML_API_URL = "http://localhost:5005";
 
 export interface SalesPrediction {
   date: string;
@@ -11,34 +11,36 @@ export interface SalesPrediction {
 export const trainModel = async (sales: Sale[]): Promise<void> => {
   try {
     const response = await fetch(`${ML_API_URL}/train`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ sales }),
     });
 
     if (!response.ok) {
-      throw new Error('Error training model');
+      throw new Error("Error training model");
     }
   } catch (error) {
-    console.error('Error training model:', error);
+    console.error("Error training model:", error);
     throw error;
   }
 };
 
-export const getPredictions = async (days: number = 7): Promise<SalesPrediction[]> => {
+export const getPredictions = async (
+  days: number = 7
+): Promise<SalesPrediction[]> => {
   try {
     const response = await fetch(`${ML_API_URL}/predict?days=${days}`);
-    
+
     if (!response.ok) {
-      throw new Error('Error getting predictions');
+      throw new Error("Error getting predictions");
     }
 
     const data = await response.json();
     return data.predictions;
   } catch (error) {
-    console.error('Error getting predictions:', error);
+    console.error("Error getting predictions:", error);
     throw error;
   }
 };

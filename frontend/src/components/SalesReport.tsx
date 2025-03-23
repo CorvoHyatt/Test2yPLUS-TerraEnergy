@@ -3,15 +3,19 @@ import "chart.js/auto";
 import { Line, Bar } from "react-chartjs-2";
 import { format } from "date-fns";
 import { getSales, type SalesResponse } from "../services/salesService";
-import { trainModel, getPredictions, type SalesPrediction } from "../services/predictionService";
-import { 
-  Box, 
-  Paper, 
-  TextField, 
-  Typography, 
-  Container, 
-  CircularProgress, 
-  Grid, 
+import {
+  trainModel,
+  getPredictions,
+  type SalesPrediction,
+} from "../services/predictionService";
+import {
+  Box,
+  Paper,
+  TextField,
+  Typography,
+  Container,
+  CircularProgress,
+  Grid,
   Button,
   TableContainer,
   Table,
@@ -19,7 +23,7 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Alert
+  Alert,
 } from "@mui/material";
 
 export default function SalesReport() {
@@ -45,7 +49,7 @@ export default function SalesReport() {
         end_date: filters.end_date || undefined,
       });
       setSalesData(data);
-      
+
       // Entrenar el modelo con los datos actuales
       await trainModel(data.sales);
       const predictions = await getPredictions(7);
@@ -91,26 +95,38 @@ export default function SalesReport() {
 
   // Preparar datos para el gráfico de predicciones
   const predictionsChart = {
-    labels: predictions.map(p => format(new Date(p.date), "dd/MM/yyyy")),
+    labels: predictions.map((p) => format(new Date(p.date), "dd/MM/yyyy")),
     datasets: [
       {
         label: "Predicción de Ventas",
-        data: predictions.map(p => p.predicted_amount),
+        data: predictions.map((p) => p.predicted_amount),
         borderColor: "rgb(255, 99, 132)",
         backgroundColor: "rgba(255, 99, 132, 0.5)",
         tension: 0.1,
-      }
-    ]
+      },
+    ],
   };
 
   return (
-    <Container sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-      <Box sx={{ width: '100%', maxWidth: '1200px' }}>
-        <Typography variant="h4" component="h1" gutterBottom sx={{ mt: 4, textAlign: 'center' }}>
+    <Container
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        width: "100%",
+      }}
+    >
+      <Box sx={{ width: "100%", maxWidth: "1200px" }}>
+        <Typography
+          variant="h4"
+          component="h1"
+          gutterBottom
+          sx={{ mt: 4, textAlign: "center" }}
+        >
           Reportes y Predicciones de Ventas
         </Typography>
-        
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 4 }}>
+
+        <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mb: 4 }}>
           <TextField
             label="Fecha Inicio"
             type="date"
@@ -141,7 +157,7 @@ export default function SalesReport() {
         )}
 
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
             <CircularProgress />
           </Box>
         ) : (
@@ -180,7 +196,9 @@ export default function SalesReport() {
                       <TableHead>
                         <TableRow>
                           <TableCell>Fecha</TableCell>
-                          <TableCell align="right">Predicción de Venta</TableCell>
+                          <TableCell align="right">
+                            Predicción de Venta
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
