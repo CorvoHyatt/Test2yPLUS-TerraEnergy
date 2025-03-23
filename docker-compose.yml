@@ -10,6 +10,7 @@ services:
       - db
     volumes:
       - ./backend:/var/www/html
+      - /var/www/html/vendor
     networks:
       - app-network
     environment:
@@ -40,9 +41,25 @@ services:
       - "33060:3306"
     environment:
       MYSQL_DATABASE: terra_energy
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: rootpassword
     volumes:
       - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+
+  ml_service:
+    build: ./ml_service
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./ml_service:/app
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=app.py
+    depends_on:
+      - backend
     networks:
       - app-network
 
