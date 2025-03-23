@@ -39,9 +39,10 @@ export const trainModel = async (sales: Sale[]): Promise<void> => {
   } catch (error) {
     console.error("Error training model:", error);
     // Lanzar un error más específico que no se confunda con errores de autenticación
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : "Error al entrenar el modelo de predicción";
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Error al entrenar el modelo de predicción";
     throw new Error(`Error de predicción: ${errorMessage}`);
   }
 };
@@ -55,9 +56,8 @@ export const getPredictions = async (
   } catch (error) {
     console.error("Error getting predictions:", error);
     // Lanzar un error más específico que no se confunda con errores de autenticación
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : "Error al obtener predicciones";
+    const errorMessage =
+      error instanceof Error ? error.message : "Error al obtener predicciones";
     throw new Error(`Error de predicción: ${errorMessage}`);
   }
 };

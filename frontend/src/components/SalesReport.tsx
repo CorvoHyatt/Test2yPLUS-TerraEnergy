@@ -3,6 +3,7 @@ import "chart.js/auto";
 import { Line, Bar } from "react-chartjs-2";
 import { format } from "date-fns";
 import { getSales, type SalesResponse } from "../services/salesService";
+import { userService } from "../services/api"; // Importar el servicio de usuarios
 import {
   trainModel,
   getPredictions,
@@ -30,6 +31,12 @@ import {
   InputLabel,
 } from "@mui/material";
 
+interface UserOption {
+  id: number;
+  name: string;
+  displayName: string;
+}
+
 export default function SalesReport() {
   const [salesData, setSalesData] = useState<SalesResponse | null>(null);
   const [predictions, setPredictions] = useState<SalesPrediction[]>([]);
@@ -44,6 +51,8 @@ export default function SalesReport() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Lista completa de usuarios disponibles
+  const [availableUsers, setAvailableUsers] = useState<UserOption[]>([]);
 
   // Opciones predefinidas para períodos de predicción
   const predefinedPeriods = [
@@ -57,6 +66,25 @@ export default function SalesReport() {
 
   // Agregar un indicador visible para el entrenamiento del modelo
   const [modelTrained, setModelTrained] = useState(false);
+
+  // Cargar los usuarios disponibles al inicio
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const users = await userService.getUsers();
+        const userOptions = users.map((user) => ({
+          id: user.id,
+          name: user.name,
+          displayName: `${user.id} - ${user.name}`,
+        }));
+        setAvailableUsers(userOptions);
+      } catch (error) {
+        console.error("Error cargando usuarios:", error);
+      }
+    };
+
+    loadUsers();
+  }, []);
 
   useEffect(() => {
     loadSales();
@@ -287,9 +315,9 @@ export default function SalesReport() {
               }
             >
               <MenuItem value="">Todos los usuarios</MenuItem>
-              {salesData?.totals.sales_by_user.map((item) => (
-                <MenuItem key={item.user} value={item.user.split(" - ")[0]}>
-                  {item.user}
+              {availableUsers.map((user) => (
+                <MenuItem key={user.id} value={user.id.toString()}>
+                  {user.displayName}
                 </MenuItem>
               ))}
             </Select>

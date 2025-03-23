@@ -27,7 +27,7 @@ export default function Navigation() {
             }
             onClick={() => navigate("/sales/report")}
           >
-            Reportes
+            Reportes y Prediciones
           </Button>
         </Box>
         <Button
