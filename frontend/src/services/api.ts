@@ -16,11 +16,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Agregar interceptor para manejar errores de autenticación
+// Mejorar el interceptor para evitar redirecciones innecesarias al login
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Solo redirigir al login cuando es un error de autenticación específico del API principal
+    // y la URL no es una solicitud al servicio ML
+    if (
+      error.response?.status === 401 && 
+      error.config?.baseURL === import.meta.env.VITE_API_URL &&
+      !error.config?.url?.includes('/ml/')
+    ) {
+      console.log('Error de autenticación, redirigiendo al login...');
       localStorage.removeItem("token");
       window.location.href = "/login";
     }

@@ -66,7 +66,9 @@ export default function SalesReport() {
     setLoading(true);
     setError(null);
     setModelTrained(false);
+
     try {
+      // Cargar datos de ventas
       const salesData = await getSales({
         start_date: filters.start_date || undefined,
         end_date: filters.end_date || undefined,
@@ -74,56 +76,69 @@ export default function SalesReport() {
       });
       setSalesData(salesData);
 
-      // Solo entrenar el modelo si hay datos suficientes
+      // Solo continuar con predicciones si hay datos suficientes
       if (salesData.sales.length > 0) {
         try {
+          // Intentar entrenar el modelo
           await trainModel(salesData.sales);
           setModelTrained(true);
-        } catch (modelError) {
-          console.error("Error training model:", modelError);
-          // No establecemos error global para permitir mostrar al menos los datos históricos
-        }
 
-        // Calcular el período de predicción en días
-        let predictionDays = predictionConfig.predictionPeriod;
-        if (predictionConfig.periodType === "months") {
-          predictionDays = predictionConfig.predictionPeriod * 30;
-        } else if (predictionConfig.periodType === "year") {
-          predictionDays = predictionConfig.predictionPeriod * 365;
-        }
+          // Calcular el período de predicción en días
+          let predictionDays = predictionConfig.predictionPeriod;
+          if (predictionConfig.periodType === "months") {
+            predictionDays = predictionConfig.predictionPeriod * 30;
+          } else if (predictionConfig.periodType === "year") {
+            predictionDays = predictionConfig.predictionPeriod * 365;
+          }
 
-        try {
-          // Obtener predicciones
-          const predictions = await getPredictions({
-            predictionPeriod: predictionDays,
-            startDate:
-              salesData.sales.length > 0
-                ? salesData.sales[salesData.sales.length - 1].sale_date
-                : undefined,
-          });
-          setPredictions(predictions);
-        } catch (predictionError) {
-          console.error("Error getting predictions:", predictionError);
-          setPredictions([]);
-          // Solo mostramos este error si el entrenamiento fue exitoso pero las predicciones fallaron
-          if (modelTrained) {
+          // Si el entrenamiento fue exitoso, obtener predicciones
+          try {
+            const predictions = await getPredictions({
+              predictionPeriod: predictionDays,
+              startDate: salesData.sales[salesData.sales.length - 1].sale_date,
+            });
+            setPredictions(predictions);
+          } catch (predictionError) {
+            console.error("Error al obtener predicciones:", predictionError);
+            setPredictions([]);
+            // Mostrar un error específico para problemas de predicción
             setError(
-              "Error al obtener predicciones. Por favor, intente nuevamente."
+              "No se pudieron generar predicciones. Por favor, intente con diferentes parámetros."
             );
           }
+        } catch (modelError) {
+          console.error("Error al entrenar el modelo:", modelError);
+          setModelTrained(false);
+          setPredictions([]);
+          // Mostrar error específico de entrenamiento pero seguir mostrando los datos históricos
+          setError(
+            "No se pudo entrenar el modelo de predicción. Los datos históricos están disponibles, pero las predicciones no se pudieron generar."
+          );
         }
       } else {
         setPredictions([]);
+        // Si no hay datos, mostrar un mensaje informativo
+        if (filters.start_date || filters.end_date || filters.user_id) {
+          setError("No hay datos disponibles para los filtros seleccionados.");
+        }
       }
     } catch (error) {
-      console.error("Error loading sales:", error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Error desconocido al cargar los datos"
-      );
+      console.error("Error al cargar datos de ventas:", error);
+      // Manejar errores de carga de datos (podría ser un problema del backend principal)
       setSalesData(null);
       setPredictions([]);
+
+      // Mensaje de error más descriptivo
+      let errorMessage = "Error desconocido al cargar los datos";
+      if (error instanceof Error) {
+        // Si es un error específico de predicción (desde el servicio ML), mostrar ese mensaje
+        if (error.message.startsWith("Error de predicción:")) {
+          errorMessage = error.message;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

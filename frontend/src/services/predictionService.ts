@@ -4,6 +4,14 @@ import type { Sale } from "./salesService";
 // Usar la URL pública del servicio ML (mapeada al puerto 5005)
 const ML_API_URL = "http://localhost:5005";
 
+// Crear una instancia separada de axios para el servicio ML
+const mlApiClient = axios.create({
+  baseURL: ML_API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
 export interface SalesPrediction {
   date: string;
   predicted_amount: number;
@@ -25,12 +33,16 @@ export const trainModel = async (sales: Sale[]): Promise<void> => {
       total_amount: Number(sale.total_amount),
     }));
 
-    await axios.post(`${ML_API_URL}/ml/train`, {
+    await mlApiClient.post(`/ml/train`, {
       sales: formattedSales,
     });
   } catch (error) {
     console.error("Error training model:", error);
-    throw error;
+    // Lanzar un error más específico que no se confunda con errores de autenticación
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : "Error al entrenar el modelo de predicción";
+    throw new Error(`Error de predicción: ${errorMessage}`);
   }
 };
 
@@ -38,10 +50,14 @@ export const getPredictions = async (
   params: PredictionParams
 ): Promise<SalesPrediction[]> => {
   try {
-    const response = await axios.post(`${ML_API_URL}/ml/predict`, params);
+    const response = await mlApiClient.post(`/ml/predict`, params);
     return response.data;
   } catch (error) {
     console.error("Error getting predictions:", error);
-    throw error;
+    // Lanzar un error más específico que no se confunda con errores de autenticación
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : "Error al obtener predicciones";
+    throw new Error(`Error de predicción: ${errorMessage}`);
   }
 };
