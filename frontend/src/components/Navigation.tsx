@@ -10,6 +10,12 @@ export default function Navigation() {
       <Toolbar>
         <Box sx={{ flex: 1, display: "flex", gap: 2 }}>
           <Button
+            color={location.pathname === "/users" ? "primary" : "inherit"}
+            onClick={() => navigate("/users")}
+          >
+            Usuarios
+          </Button>
+          <Button
             color={location.pathname === "/sales" ? "primary" : "inherit"}
             onClick={() => navigate("/sales")}
           >
