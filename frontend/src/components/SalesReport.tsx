@@ -55,6 +55,9 @@ export default function SalesReport() {
     { label: "1 año", value: 1, type: "year" },
   ];
 
+  // Agregar un indicador visible para el entrenamiento del modelo
+  const [modelTrained, setModelTrained] = useState(false);
+
   useEffect(() => {
     loadSales();
   }, [filters]);
@@ -62,6 +65,7 @@ export default function SalesReport() {
   const loadSales = async () => {
     setLoading(true);
     setError(null);
+    setModelTrained(false);
     try {
       const salesData = await getSales({
         start_date: filters.start_date || undefined,
@@ -70,26 +74,47 @@ export default function SalesReport() {
       });
       setSalesData(salesData);
 
-      // Entrenar el modelo con los datos de ventas
-      await trainModel(salesData.sales);
+      // Solo entrenar el modelo si hay datos suficientes
+      if (salesData.sales.length > 0) {
+        try {
+          await trainModel(salesData.sales);
+          setModelTrained(true);
+        } catch (modelError) {
+          console.error("Error training model:", modelError);
+          // No establecemos error global para permitir mostrar al menos los datos históricos
+        }
 
-      // Calcular el período de predicción en días
-      let predictionDays = predictionConfig.predictionPeriod;
-      if (predictionConfig.periodType === "months") {
-        predictionDays = predictionConfig.predictionPeriod * 30;
-      } else if (predictionConfig.periodType === "year") {
-        predictionDays = predictionConfig.predictionPeriod * 365;
+        // Calcular el período de predicción en días
+        let predictionDays = predictionConfig.predictionPeriod;
+        if (predictionConfig.periodType === "months") {
+          predictionDays = predictionConfig.predictionPeriod * 30;
+        } else if (predictionConfig.periodType === "year") {
+          predictionDays = predictionConfig.predictionPeriod * 365;
+        }
+
+        try {
+          // Obtener predicciones
+          const predictions = await getPredictions({
+            predictionPeriod: predictionDays,
+            startDate:
+              salesData.sales.length > 0
+                ? salesData.sales[salesData.sales.length - 1].sale_date
+                : undefined,
+          });
+          setPredictions(predictions);
+        } catch (predictionError) {
+          console.error("Error getting predictions:", predictionError);
+          setPredictions([]);
+          // Solo mostramos este error si el entrenamiento fue exitoso pero las predicciones fallaron
+          if (modelTrained) {
+            setError(
+              "Error al obtener predicciones. Por favor, intente nuevamente."
+            );
+          }
+        }
+      } else {
+        setPredictions([]);
       }
-
-      // Obtener predicciones
-      const predictions = await getPredictions({
-        predictionPeriod: predictionDays,
-        startDate:
-          salesData.sales.length > 0
-            ? salesData.sales[salesData.sales.length - 1].sale_date
-            : undefined,
-      });
-      setPredictions(predictions);
     } catch (error) {
       console.error("Error loading sales:", error);
       setError(
@@ -116,7 +141,13 @@ export default function SalesReport() {
         ),
         datasets: [
           {
-            label: "Ventas Históricas",
+            label: filters.user_id
+              ? `Ventas de ${
+                  salesData.totals.sales_by_user.find(
+                    (u) => u.user.split(" - ")[0] === filters.user_id
+                  )?.user || "Usuario"
+                }`
+              : "Ventas Históricas",
             data: salesData.sales.map((sale) =>
               parseFloat(sale.total_amount.toString())
             ),
@@ -302,6 +333,21 @@ export default function SalesReport() {
             <Paper sx={{ p: 3, mb: 4 }}>
               <Typography variant="h6" gutterBottom>
                 Histórico de Ventas
+                {filters.user_id && (
+                  <span
+                    style={{
+                      fontWeight: "normal",
+                      fontSize: "0.9rem",
+                      marginLeft: "10px",
+                    }}
+                  >
+                    (Filtrado por usuario:{" "}
+                    {salesData?.totals.sales_by_user.find(
+                      (u) => u.user.split(" - ")[0] === filters.user_id
+                    )?.user || filters.user_id}
+                    )
+                  </span>
+                )}
               </Typography>
               {historicalSalesChart && (
                 <Line
@@ -325,6 +371,14 @@ export default function SalesReport() {
                     },
                   }}
                 />
+              )}
+              {salesData?.sales.length === 0 && (
+                <Typography
+                  sx={{ textAlign: "center", my: 3, color: "text.secondary" }}
+                >
+                  No hay datos de ventas para mostrar con los filtros
+                  seleccionados
+                </Typography>
               )}
             </Paper>
 
@@ -357,7 +411,31 @@ export default function SalesReport() {
                   ? "meses"
                   : "año"}
                 )
+                {filters.user_id && (
+                  <span
+                    style={{
+                      fontWeight: "normal",
+                      fontSize: "0.9rem",
+                      marginLeft: "10px",
+                    }}
+                  >
+                    (Basado en datos de:{" "}
+                    {salesData?.totals.sales_by_user.find(
+                      (u) => u.user.split(" - ")[0] === filters.user_id
+                    )?.user || filters.user_id}
+                    )
+                  </span>
+                )}
               </Typography>
+              {!modelTrained &&
+                salesData &&
+                salesData.sales &&
+                salesData.sales.length > 0 && (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    No se pudo entrenar el modelo predictivo. Las predicciones
+                    podrían no ser precisas.
+                  </Alert>
+                )}
               {predictions.length > 0 ? (
                 <>
                   <Box sx={{ mb: 3 }}>

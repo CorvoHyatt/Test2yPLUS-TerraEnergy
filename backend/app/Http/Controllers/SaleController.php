@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sale;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -24,20 +25,39 @@ class SaleController extends Controller
             $query->where('user_id', $request->user_id);
         }
 
-        $sales = $query->get();
+        $sales = $query->orderBy('sale_date', 'asc')->get();
+
+        // Preparar datos de ventas por usuario para totales
+        // Si hay un filtro de usuario, incluimos solo información de ese usuario
+        if ($request->has('user_id')) {
+            $salesByUser = [];
+            if ($sales->count() > 0) {
+                $user = $sales->first()->user;
+                $salesByUser[] = [
+                    'user' => $user->id . ' - ' . $user->name,
+                    'total' => $sales->sum('total_amount')
+                ];
+            }
+        } else {
+            // Si no hay filtro, incluimos todos los usuarios que tienen ventas
+            $salesByUser = $sales->groupBy('user_id')
+                ->map(function($group) {
+                    $user = $group->first()->user;
+                    return [
+                        'user' => $user->id . ' - ' . $user->name,
+                        'total' => $group->sum('total_amount')
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
 
         $totals = [
             'total_sales' => $sales->sum('total_amount'),
             'sales_by_client' => $sales->groupBy('client')
                 ->map(fn($group) => $group->sum('total_amount'))
                 ->toArray(),
-            'sales_by_user' => $sales->groupBy('user.name')
-                ->map(fn($group) => [
-                    'user' => $group->first()->user->name,
-                    'total' => $group->sum('total_amount')
-                ])
-                ->values()
-                ->toArray()
+            'sales_by_user' => $salesByUser
         ];
 
         return response()->json([
