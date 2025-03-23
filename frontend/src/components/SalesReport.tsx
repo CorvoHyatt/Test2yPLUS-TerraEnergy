@@ -24,6 +24,10 @@ import {
   TableRow,
   TableCell,
   Alert,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 
 export default function SalesReport() {
@@ -32,6 +36,7 @@ export default function SalesReport() {
   const [filters, setFilters] = useState({
     start_date: "",
     end_date: "",
+    user_id: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +52,7 @@ export default function SalesReport() {
       const data = await getSales({
         start_date: filters.start_date || undefined,
         end_date: filters.end_date || undefined,
+        user_id: filters.user_id ? parseInt(filters.user_id) : undefined,
       });
       setSalesData(data);
 
@@ -145,6 +151,26 @@ export default function SalesReport() {
             }
             InputLabelProps={{ shrink: true }}
           />
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Usuario</InputLabel>
+            <Select
+              value={filters.user_id}
+              label="Usuario"
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, user_id: e.target.value }))
+              }
+            >
+              <MenuItem value="">Todos los usuarios</MenuItem>
+              {salesData?.totals.sales_by_user.map((item) => (
+                <MenuItem
+                  key={item.user}
+                  value={item.user.split(" - ")[0]} // Asumiendo que el ID está en el formato "ID - Nombre"
+                >
+                  {item.user}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <Button variant="contained" onClick={handleApplyFilters}>
             Aplicar Filtros
           </Button>

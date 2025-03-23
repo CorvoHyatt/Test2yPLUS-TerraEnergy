@@ -8,13 +8,14 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     zip \
-    unzip
+    unzip \
+    default-mysql-client
 
 # Instalar extensiones de PHP
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# Habilitar mod_rewrite para Apache
-RUN a2enmod rewrite
+# Habilitar módulos de Apache necesarios
+RUN a2enmod rewrite headers
 
 # Configurar el documento root de Apache
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
@@ -34,13 +35,10 @@ RUN composer install
 
 # Dar permisos necesarios
 RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage
-
-# Script de inicio
-COPY start.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/start.sh
+    && chmod -R 755 /var/www/html/storage \
+    && chmod +x /var/www/html/start.sh
 
 # Puerto por defecto de Apache
 EXPOSE 8000
 
-CMD ["/usr/local/bin/start.sh"]
+CMD ["/var/www/html/start.sh"]

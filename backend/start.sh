@@ -6,6 +6,10 @@ while ! mysql -h"$DB_HOST" -u"$DB_USERNAME" -p"$DB_PASSWORD" -e "SELECT 1;" >/de
 done
 echo "Base de datos lista!"
 
+# Habilitar módulos de Apache necesarios
+a2enmod headers
+a2enmod rewrite
+
 echo "Ejecutando migraciones y seeders..."
 php artisan migrate:fresh --seed
 
